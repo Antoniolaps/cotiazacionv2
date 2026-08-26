@@ -229,7 +229,7 @@
         <table>
           <thead><tr><th>Lugar / Sucursal</th><th>Selec.</th></tr></thead>
           <tbody>
-            <tr onclick="selectSucursal({nombre: 'Principal'})" title="Clic para seleccionar">
+            <tr onclick="selectSucursal({nombre: 'City Mall'})" title="Clic para seleccionar">
               <td class="fw-semibold">Principal</td>
             </tr>
             <tr onclick="selectSucursal({nombre: 'Outlet Regalon'})" title="Clic para seleccionar">
@@ -291,7 +291,7 @@
       </div>
       <div class="mb-3">
         <label class="form-label fw-semibold">Precio Unitario ($)</label>
-        <input type="number" step="0.01" id="qty-precio" class="form-control" placeholder="0.00">
+        <input type="number" step="0.01" id="qty-precio" class="form-control" placeholder="0.00"  disabled >
       </div>
       <div class="d-grid">
         <button type="button" class="btn btn-success fw-bold" onclick="confirmAddProduct()">

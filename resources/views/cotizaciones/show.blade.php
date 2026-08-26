@@ -44,7 +44,7 @@
 
                 @php
                 $sucursalesInfo = [
-                    'Principal' => [
+                    'City Mall' => [
                         'logo' => '/public/assets/img/Logo_City.png',
                         'line1' => 'Tel. C. R. 2732-2931 / 2783-2945  Fax: 2783-2952',
                         'line2' => 'Tel. Panamá: 727-7247 / Fax: 727-6591',

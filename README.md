@@ -304,3 +304,4 @@ php artisan serve
 - `log_actividades` registra LOGIN/LOGOUT y operaciones CRUD sobre las tablas principales.
 - ITBMS por defecto: **7%** (Panamá). Ajustable en `.env` → `ITBMS_RATE=0.07`.
 - Las **cotizaciones** usan `estado = 'cotizacion'` en la tabla `ventas` y **no descuentan stock** hasta ser convertidas en venta formal.
+"# cotiazacionv2" 
