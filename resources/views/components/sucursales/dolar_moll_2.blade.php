@@ -1,0 +1,16 @@
+<div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4">
+    <div>
+        <div class="quote-header-brand d-flex align-items-center gap-2">
+            <img src="/public/assets/img/Logo_DolarMoll2.png" alt="Logo Dolar Moll 2">
+        </div>
+        <p class="text-muted small mb-0 mt-1">Tel. C. R. 4444-5555 / 6666-7777  Fax: 8888-9999</p>
+        <p class="text-muted small mb-0">Tel. Panamá: 555-6666 / Fax: 555-7777</p>
+        <p class="text-muted small mb-0">R.U.C. 1122334-5-667788  D.V. 56</p>
+    </div>
+    <div class="text-end">
+        <span class="quote-title-badge mb-2 d-inline-block">COTIZACIÓN DE COMPRA</span>
+        <h4 class="fw-bold text-dark mb-1">{{ $cotizacion->numero_factura }}</h4>
+        <p class="text-muted small mb-1"><strong>Fecha Emisión:</strong> {{ date('d/m/Y', strtotime($cotizacion->fecha_venta)) }}</p>
+        <p class="text-muted small mb-0"><strong>Validez:</strong> 15 días calendario</p>
+    </div>
+</div>

@@ -1,0 +1,31 @@
+body {
+    background: #f6f8fa;
+}
+
+.sidebar .nav-link {
+    border-radius: .4rem;
+    padding: .45rem .75rem;
+}
+
+.sidebar .nav-link:hover {
+    background: #e9ecef;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+
+.table thead th {
+    background: #f1f3f5;
+}
+
+.pos-product {
+    cursor: pointer;
+    transition: transform .1s;
+}
+
+.pos-product:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+}
