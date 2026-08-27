@@ -1,0 +1,38 @@
+3 cosas importantesPuntoPor quéstring en vez de unsignedBigIntegerConserva los 0 de la izquierda. 7501230000001REGEXP_REPLACEEn vez de ponerlo a null, limpia: ABC-123 → 123doctrine/dbalCorre esto antes: composer require doctrine/dbal para que ->change() funcione4. Modelphpprotected $casts = [
+    'codigo_barras' => 'string', // importante para no perder los 0
+];Con esto ya queda 100% solo números y no pierdes códigos.Corre: composer require doctrine/dbalphp artisan migrate¿Le damos también unique al campo para que no se repitan códigos?
+[11:31 a. m., 27/8/2026] Ghosts4: Hay códigos que contienen 00 delante. Hay que guardarlos asi
+Exacto. Por eso no podemos usar unsignedBigInteger. Los 00 al inicio se pierden si lo guardas como número.000750123456789 → se vuelve 750123456789Solución: Guardar como STRING pero validar que solo sean númerosUsa este migration. Es el que necesitas:phpuse Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        // 1. Limpiar: quitar todo lo que no sea número, pero conservar los 0
+        DB::table('productos')
+            ->whereNotNull('codigo_barras')
+            ->update([
+                'codigo_barras' => DB::raw("REGEXP_REPLACE(codigo_barras, '[^0-9]', '')")
+            ]);
+
+        // 2. Cambiar a VARCHAR. Max 20 para que entre EAN13/EAN14
+        Schema::table('productos', function (Blueprint $table) {
+            $table->string('codigo_barras', 20)->nullable()->change();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('productos', function (Blueprint $table) {
+            $table->string('codigo_barras')->nullable()->change();
+        });
+    }
+};2. Model Producto.phpForzar que Laravel lo trate como texto:phpprotected $casts = [
+    'codigo_barras' => 'string',
+];3. Validación en Controllerphp'codigo_barras' => 'nullable|digits_between:8,14|unique:productos,codigo_barras,'.$iddigits = Solo permite 0-9, pero lo guarda como string. Así conservas los 00.4. Input Bladeblade<input type="text" 
+       name="codigo_barras" 
+       value="{{ old('codigo_barras', $producto->codigo_barras) }}"
+       oninput="this.value = this.value.replace(/\D/g, '')"
+       maxlength="14">ResumenTipoGuarda 001234Valida solo númerosRecomendadounsignedBigIntegerNOSINOstring + digitsSISISIcomposer require doctrine/dbalphp artisan migrateCon eso ya te va a guardar 00012345678901 tal cual.¿Quieres que le ponga también unique para que 2 productos no tengan el mismo código?
