@@ -149,7 +149,8 @@
       <table class="table table-hover align-middle mb-0" id="items-table">
         <thead class="table-light">
           <tr>
-            <th style="width:110px">Código</th>
+            <th style="width:110px">codigo_barras</th>
+            <th style="width:110px">Referencia</th>
             <th>Producto</th>
             <th style="width:100px" class="text-center">Cant.</th>
             <th style="width:130px" class="text-end">Precio Unit.</th>
@@ -159,7 +160,7 @@
         </thead>
         <tbody id="items-body">
           <tr id="empty-row">
-            <td colspan="6" class="text-center text-muted py-5">
+            <td colspan="7" class="text-center text-muted py-5">
             </td>
           </tr>
         </tbody>
@@ -230,7 +231,7 @@
           <thead><tr><th>Lugar / Sucursal</th><th>Selec.</th></tr></thead>
           <tbody>
             <tr onclick="selectSucursal({nombre: 'City Mall'})" title="Clic para seleccionar">
-              <td class="fw-semibold">Principal</td>
+              <td class="fw-semibold">City Mall</td>
             </tr>
             <tr onclick="selectSucursal({nombre: 'Outlet Regalon'})" title="Clic para seleccionar">
               <td class="fw-semibold">Outlet Regalon</td>
@@ -350,7 +351,7 @@ function doSearch(type) {
   const urls = { cliente: URL_CLIENTE, producto: URL_PRODUCTO, proveedor: URL_PROVEEDOR };
 
   if (!q) { box.innerHTML = '<div class="empty-msg">Escribe algo para buscar.</div>'; return; }
-
+ 
   box.innerHTML = '<div class="empty-msg"><span class="spin"></span> Buscando…</div>';
 
   fetch(`${urls[type]}?q=${encodeURIComponent(q)}`)
@@ -374,8 +375,8 @@ function renderResults(type, data) {
       onclick: (r) => selectCliente(r),
     },
     producto: {
-      headers: ['Código','Nombre','Precio Venta'],
-      row: (r) => `<td class="fw-bold">${r.codigo}</td><td>${r.nombre}</td><td class="fw-semibold text-success">$${parseFloat(r.precio_venta).toFixed(2)}</td>`,
+      headers: ['codigo_barras','Código','Nombre','Precio Venta'],
+      row: (r) => `<td class="fw-bold">${r.codigo_barras ?? '-'}</td><td>${r.codigo ?? '-'}</td><td>${r.nombre}</td><td class="fw-semibold text-success">$${parseFloat(r.precio_venta).toFixed(2)}</td>`,
       onclick: (r) => openQtyPanel(r),
     },
     proveedor: {
@@ -454,7 +455,8 @@ function clearProveedor() {
 // ─── Mini-panel de cantidad/precio antes de agregar ─────────────────────────
 function openQtyPanel(prod) {
   document.getElementById('qty-prod-id').value     = prod.id;
-  document.getElementById('qty-prod-codigo').value = prod.codigo;
+  document.getElementById('qty-prod-codigo').value = prod.codigo ?? '';
+  document.getElementById('qty-prod-codigo').dataset.barras = prod.codigo_barras ?? ''; 
   document.getElementById('qty-prod-nombre').value = prod.nombre;
   document.getElementById('qty-precio').value       = parseFloat(prod.precio_venta).toFixed(2);
   document.getElementById('qty-cant').value         = 1;
@@ -473,13 +475,15 @@ document.getElementById('qty-precio').addEventListener('keydown', e => {
 });
 
 function confirmAddProduct() {
-  const id     = parseInt(document.getElementById('qty-prod-id').value);
+  const id = parseInt(document.getElementById('qty-prod-id').value);
   const codigo = document.getElementById('qty-prod-codigo').value;
+  const codigo_barras = document.getElementById('qty-prod-codigo').dataset.barras?? ''; 
   const nombre = document.getElementById('qty-prod-nombre').value;
-  const cant   = parseInt(document.getElementById('qty-cant').value) || 1;
+
+  const cant = parseInt(document.getElementById('qty-cant').value) || 1;
   const precio = parseFloat(document.getElementById('qty-precio').value) || 0;
 
-  if (cant < 1)   { alert('La cantidad debe ser mayor a 0.'); return; }
+  if (cant < 1) { alert('La cantidad debe ser mayor a 0.'); return; }
   if (precio <= 0) { alert('Ingrese un precio válido.'); return; }
 
   const existing = quoteItems.find(i => i.id === id);
@@ -487,7 +491,7 @@ function confirmAddProduct() {
     existing.cantidad += cant;
     existing.precio = precio;
   } else {
-    quoteItems.push({ id, codigo, nombre, cantidad: cant, precio });
+    quoteItems.push({ id, codigo, codigo_barras, nombre, cantidad: cant, precio }); // 
   }
 
   closePanel('qty');
@@ -500,31 +504,32 @@ function renderTable() {
   document.getElementById('btn-submit').disabled = quoteItems.length === 0;
 
   if (!quoteItems.length) {
-    body.innerHTML = `<tr id="empty-row"><td colspan="6" class="text-center text-muted py-5">
+    body.innerHTML = `<tr id="empty-row"><td colspan="7" class="text-center text-muted py-5">
       <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-      Usa <strong>Buscar Producto</strong> o <strong>Importar Excel</strong> para agregar ítems</td></tr>`;
+      Usa <strong>Buscar Producto</strong> para agregar ítems</td></tr>`;
   } else {
     body.innerHTML = quoteItems.map((item, idx) => `
       <tr>
-        <td class="fw-bold text-secondary">${item.codigo}
-          <input type="hidden" name="items[${idx}][id]"       value="${item.id}">
+        <td class="fw-bold text-secondary">${item.codigo_barras?? '-'}</td>
+        <td class="fw-bold text-secondary">${item.codigo?? '-'}
+          <input type="hidden" name="items[${idx}][id]" value="${item.id}">
+          <input type="hidden" name="items[${idx}][codigo]" value="${item.codigo}">
+          <input type="hidden" name="items[${idx}][codigo_barras]" value="${item.codigo_barras}">
           <input type="hidden" name="items[${idx}][cantidad]" value="${item.cantidad}">
-          <input type="hidden" name="items[${idx}][precio]"   value="${item.precio}">
+          <input type="hidden" name="items[${idx}][precio]" value="${item.precio}">
         </td>
         <td class="fw-semibold">${item.nombre}</td>
         <td class="text-center">
           <input type="number" class="form-control form-control-sm text-center" style="width:75px;margin:0 auto"
-            value="${item.cantidad}" min="1"
-            onchange="updateQty(${idx}, this.value)">
+            value="${item.cantidad}" min="1" onchange="updateQty(${idx}, this.value)">
         </td>
         <td class="text-end">
           <input type="number" step="0.01" class="form-control form-control-sm text-end" style="width:100px;margin:0 0 0 auto"
-            value="${item.precio.toFixed(2)}"
-            onchange="updatePrecio(${idx}, this.value)">
+            value="${item.precio.toFixed(2)}" onchange="updatePrecio(${idx}, this.value)">
         </td>
         <td class="text-end fw-bold">$${(item.cantidad * item.precio).toFixed(2)}</td>
         <td class="text-center">
-          <button type="button" class="btn btn-sm text-danger p-0" onclick="removeItem(${idx})">
+          <button type="button" class="btn btn-sm text-danger p-0" onclick="removeItem(${idx})" title="Eliminar">
             <i class="bi bi-x-circle-fill fs-5"></i>
           </button>
         </td>
@@ -534,19 +539,25 @@ function renderTable() {
   const sub = quoteItems.reduce((a, i) => a + i.cantidad * i.precio, 0);
   const itb = Math.round(sub * RATE * 100) / 100;
   document.getElementById('txt-subtotal').innerText = `$${sub.toFixed(2)}`;
-  document.getElementById('txt-itbms').innerText    = `$${itb.toFixed(2)}`;
-  document.getElementById('txt-total').innerText    = `$${(sub + itb).toFixed(2)}`;
+  document.getElementById('txt-itbms').innerText = `$${itb.toFixed(2)}`;
+  document.getElementById('txt-total').innerText = `$${(sub + itb).toFixed(2)}`;
 }
 
 function removeItem(idx) { quoteItems.splice(idx, 1); renderTable(); }
 function updateQty(idx, v) {
   const q = parseInt(v);
-  if (q > 0) quoteItems[idx].cantidad = q; else removeItem(idx);
+  if (q > 0) {
+    quoteItems[idx].cantidad = q;
+    document.querySelector(`input[name="items[${idx}][cantidad]"]`).value = q; 
+  } else removeItem(idx);
   renderTable();
 }
 function updatePrecio(idx, v) {
   const p = parseFloat(v);
-  if (p >= 0) quoteItems[idx].precio = p;
+  if (p >= 0) {
+    quoteItems[idx].precio = p;
+    document.querySelector(`input[name="items[${idx}][precio]"]`).value = p.toFixed(2); 
+  }
   renderTable();
 }
 
@@ -621,7 +632,7 @@ function applyExcelBatch(rows, resp) {
   let agregados = 0, rechazados = [];
 
   rows.forEach(r => {
-    const cod  = String(r.codigo).trim().toUpperCase();
+    const cod = String(r.codigo).trim().toUpperCase();
     const cant = parseInt(r.cantidad) || 1;
     const prec = parseFloat(r.precio) || 0;
     const prod = foundMap[cod];
@@ -629,7 +640,16 @@ function applyExcelBatch(rows, resp) {
     if (prod) {
       const ex = quoteItems.find(i => i.id === prod.id);
       if (ex) { ex.cantidad += cant; }
-      else { quoteItems.push({ id: prod.id, codigo: prod.codigo, nombre: prod.nombre, cantidad: cant, precio: prec || parseFloat(prod.precio_venta) }); }
+      else {
+        quoteItems.push({
+          id: prod.id,
+          codigo: prod.codigo,
+          codigo_barras: prod.codigo_barras?? '', // <-- AGREGA ESTO
+          nombre: prod.nombre,
+          cantidad: cant,
+          precio: prec || parseFloat(prod.precio_venta)
+        });
+      }
       agregados++;
     } else {
       rechazados.push(cod);
@@ -637,26 +657,9 @@ function applyExcelBatch(rows, resp) {
   });
 
   renderTable();
-
-  // Feedback visual en la zona
-  let html = `<i class="bi bi-check-circle-fill text-success fs-2"></i>
-    <span>${agregados} producto(s) importado(s)</span>`;
-  if (rechazados.length) {
-    html += `<small class="d-block mt-1">
-      <span class="reject-badge">${rechazados.length} código(s) no encontrado(s): ${rechazados.join(', ')}</span>
-    </small>`;
-  }
-  excelZone.innerHTML = html + `<small class="d-block mt-2 text-muted" style="cursor:pointer" onclick="resetExcelZone()">↩ Importar otro archivo</small>`;
-  excelInput.value = '';
 }
+  
 
-function resetExcelZone() {
-  excelZone.innerHTML = `
-    <i class="bi bi-file-earmark-spreadsheet"></i>
-    <span>Arrastra un archivo Excel aquí o haz clic para seleccionar</span>
-    <small>Columnas requeridas: <strong>codigo</strong> | <strong>cantidad</strong> | <strong>precio</strong></small>`;
-  excelInput.value = '';
-}
 </script>
 @endpush
 </x-app-layout>
