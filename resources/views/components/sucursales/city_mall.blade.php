@@ -11,6 +11,6 @@
         <span class="quote-title-badge mb-2 d-inline-block">COTIZACIÓN DE COMPRA</span>
         <h4 class="fw-bold text-dark mb-1">{{ $cotizacion->numero_factura }}</h4>
         <p class="text-muted small mb-1"><strong>Fecha Emisión:</strong> {{ date('d/m/Y', strtotime($cotizacion->fecha_venta)) }}</p>
-        <p class="text-muted small mb-0"><strong>Validez:</strong> 15 días calendario</p>
+        <p class="text-muted small mb-0"><strong>Validez:</strong> 30 Días</p>
     </div>
 </div>
