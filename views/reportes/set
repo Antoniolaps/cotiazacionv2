@@ -1,0 +1,49 @@
+
+
+
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        // Primero limpiar los que tienen letras
+        \DB::table('productos')->where('codigo_barras', 'REGEXP', '[^0-9]')->update(['codigo_barras' => null]);
+
+        Schema::table('productos', function (Blueprint $table) {
+            $table->unsignedBigInteger('codigo_barras')->nullable()->change();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('productos', function (Blueprint $table) {
+            $table->string('codigo_barras')->nullable()->change();
+        });
+    }
+};
+
+protected $casts = [
+    'codigo_barras' => 'integer', // o 'string' si quieres conservar los 0 de la izquierda
+];
+
+$request->validate([
+    'codigo_barras' => 'nullable|digits_between:8,14|unique:productos,codigo_barras,'.$producto->id,
+],[
+    'codigo_barras.digits_between' => 'El código de barras debe tener entre 8 y 14 dígitos y solo números.',
+    'codigo_barras.unique' => 'Este código de barras ya existe.',
+]);
+
+<input type="text" 
+       name="codigo_barras" 
+       id="codigo_barras"
+       value="{{ old('codigo_barras', $producto->codigo_barras) }}"
+       class="form-control"
+       inputmode="numeric" 
+       pattern="[0-9]*"
+       maxlength="14"
+       onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+       onpaste="event.preventDefault(); this.value = (event.clipboardData.getData('text')+'').replace(/\D/g,'')"
+       oninput="this.value = this.value.replace(/\D/g,'')">
+<small class="text-muted">Solo números de 8 a 14 dígitos</small>
