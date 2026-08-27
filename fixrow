@@ -1,0 +1,514 @@
+:
+---
+
+1. Agregar garantía a detalle_ventas
+
+Como la garantía es por producto dentro de la cotización, el lugar correcto es detalle_ventas, no productos y no ventas.
+
+Crea una migración:
+
+php artisan make:migration add_garantia_to_detalle_ventas_table --table=detalle_ventas
+
+En la migración:
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('detalle_ventas', function (Blueprint $table) {
+            $table->boolean('garantia')
+                ->default(false)
+                ->after('precio_unitario');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('detalle_ventas', function (Blueprint $table) {
+            $table->dropColumn('garantia');
+        });
+    }
+};
+
+Después:
+
+php artisan migrate
+
+
+---
+
+2. Modificar DetalleVenta.php
+
+Actualmente tienes:
+
+protected $fillable = [
+    'venta_id',
+    'producto_id',
+    'cantidad',
+    'precio_unitario',
+    'descuento',
+    'subtotal',
+];
+
+Agrega garantia:
+
+protected $fillable = [
+    'venta_id',
+    'producto_id',
+    'cantidad',
+    'precio_unitario',
+    'garantia',
+    'descuento',
+    'subtotal',
+];
+
+Y recomiendo agregar el casteo:
+
+protected $casts = [
+    'garantia' => 'boolean',
+];
+
+Tu modelo quedaría:
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class DetalleVenta extends Model
+{
+    use HasFactory;
+
+    protected $table = 'detalle_ventas';
+
+    public $timestamps = false;
+
+    protected $fillable = [
+        'venta_id',
+        'producto_id',
+        'cantidad',
+        'precio_unitario',
+        'garantia',
+        'descuento',
+        'subtotal',
+    ];
+
+    protected $casts = [
+        'garantia' => 'boolean',
+    ];
+
+    public function venta()
+    {
+        return $this->belongsTo(Venta::class, 'venta_id');
+    }
+
+    public function producto()
+    {
+        return $this->belongsTo(Producto::class, 'producto_id');
+    }
+}
+
+Esto corresponde directamente al modelo que tienes actualmente. 
+
+
+---
+
+3. Agregar garantía al quoteItems
+
+Esta es la parte más importante.
+
+Actualmente tienes:
+
+quoteItems.push({
+    id,
+    codigo,
+    codigo_barras,
+    nombre,
+    cantidad: cant,
+    precio
+});
+
+Vamos a cambiarlo a:
+
+quoteItems.push({
+    id,
+    codigo,
+    codigo_barras,
+    nombre,
+    cantidad: cant,
+    precio,
+    garantia: false
+});
+
+De esta manera cada producto comienza sin garantía.
+
+Ejemplo:
+
+quoteItems = [
+    {
+        id: 15,
+        codigo: "PROD-001",
+        codigo_barras: "123456789",
+        nombre: "Taladro",
+        cantidad: 2,
+        precio: 45.00,
+        garantia: true
+    },
+    {
+        id: 22,
+        codigo: "PROD-002",
+        codigo_barras: "987654321",
+        nombre: "Martillo",
+        cantidad: 1,
+        precio: 15.00,
+        garantia: false
+    }
+];
+
+Esto cumple exactamente con lo que acabas de establecer.
+
+
+---
+
+4. Agregar el checkbox individual
+
+En tu renderTable() actualmente cada producto genera una fila. 
+
+Vamos a agregar una columna:
+
+<th style="width:100px" class="text-center">
+    Garantía
+</th>
+
+Por ejemplo, tu encabezado actualmente tiene:
+
+<tr>
+    <th>codigo_barras</th>
+    <th>Referencia</th>
+    <th>Producto</th>
+    <th>Cant.</th>
+    <th>Precio Unit.</th>
+    <th>Subtotal</th>
+    <th></th>
+</tr>
+
+Posteriormente tendremos:
+
+<tr>
+    <th>codigo_barras</th>
+    <th>Referencia</th>
+    <th>Producto</th>
+    <th>Cant.</th>
+    <th>Precio Unit.</th>
+    <th>Garantía</th>
+    <th>Subtotal</th>
+    <th></th>
+</tr>
+
+
+---
+
+5. Checkbox por cada producto
+
+Dentro de:
+
+quoteItems.map((item, idx) => `
+
+agregamos:
+
+<td class="text-center">
+    <input
+        type="checkbox"
+        class="form-check-input"
+        ${item.garantia ? 'checked' : ''}
+        onchange="updateGarantia(${idx}, this.checked)"
+    >
+
+    <input
+        type="hidden"
+        name="items[${idx}][garantia]"
+        value="${item.garantia ? 1 : 0}"
+    >
+</td>
+
+Entonces cada línea tendrá su propio estado.
+
+Visualmente:
+
+┌───────────────┬──────────┬───────────┬─────────┐
+│ Producto      │ Cantidad │ Precio    │ Garantía│
+├───────────────┼──────────┼───────────┼─────────┤
+│ Taladro       │    2     │ $45.00    │ ☑       │
+│ Martillo      │    1     │ $15.00    │ ☐       │
+│ Monitor       │    3     │ $180.00   │ ☑       │
+└───────────────┴──────────┴───────────┴─────────┘
+
+
+---
+
+6. Crear updateGarantia()
+
+Debajo de updatePrecio():
+
+function updateGarantia(idx, value) {
+    quoteItems[idx].garantia = value;
+
+    const input = document.querySelector(
+        `input[name="items[${idx}][garantia]"]`
+    );
+
+    if (input) {
+        input.value = value ? 1 : 0;
+    }
+}
+
+No necesitamos volver a renderizar toda la tabla cuando se cambia el checkbox.
+
+
+---
+
+7. Modificar CreateQuoteAction
+
+Aquí está la parte que actualmente falta.
+
+Actualmente tienes:
+
+DetalleVenta::create([
+    'venta_id'        => $cotizacion->id,
+    'producto_id'     => (int)$it['id'],
+    'cantidad'        => (int)$it['cantidad'],
+    'precio_unitario' => (float)$it['precio'],
+    'subtotal'        => round((int)$it['cantidad'] * (float)$it['precio'], 2),
+]);
+
+Lo cambiamos a:
+
+DetalleVenta::create([
+    'venta_id'        => $cotizacion->id,
+    'producto_id'     => (int)$it['id'],
+    'cantidad'        => (int)$it['cantidad'],
+    'precio_unitario' => (float)$it['precio'],
+    'garantia'        => !empty($it['garantia']),
+    'subtotal'        => round(
+        (int)$it['cantidad'] * (float)$it['precio'],
+        2
+    ),
+]);
+
+Así:
+
+Checkbox
+    ↓
+quoteItems[idx].garantia
+    ↓
+items[idx][garantia]
+    ↓
+Request Laravel
+    ↓
+CreateQuoteAction
+    ↓
+detalle_ventas.garantia
+
+
+---
+
+8. Agregar validación en CotizacionController
+
+Actualmente store() solamente valida que items sea un array requerido. 
+
+Podemos fortalecerlo:
+
+$request->validate([
+    'cliente_id'       => 'nullable|exists:clientes,id',
+    'cliente_nombre'   => 'nullable|string|max:255',
+    'punto_facturacion' => 'nullable|string|max:100',
+
+    'items'            => 'required|array|min:1',
+
+    'items.*.id'       => 'required|exists:productos,id',
+    'items.*.cantidad' => 'required|integer|min:1',
+    'items.*.precio'   => 'required|numeric|min:0',
+    'items.*.garantia' => 'nullable|boolean',
+
+    'observaciones'    => 'nullable|string',
+]);
+
+Así Laravel no confiará únicamente en el JavaScript del navegador.
+
+
+---
+
+9. Excel
+
+Aquí tenemos un detalle importante.
+
+Tu sistema actualmente también importa productos desde Excel mediante SheetJS y posteriormente los mete en quoteItems. 
+
+Actualmente:
+
+quoteItems.push({
+    id: prod.id,
+    codigo: prod.codigo,
+    codigo_barras: prod.codigo_barras ?? '',
+    nombre: prod.nombre,
+    cantidad: cant,
+    precio: prec || parseFloat(prod.precio_venta)
+});
+
+Debemos agregar:
+
+garantia: false
+
+Quedando:
+
+quoteItems.push({
+    id: prod.id,
+    codigo: prod.codigo,
+    codigo_barras: prod.codigo_barras ?? '',
+    nombre: prod.nombre,
+    cantidad: cant,
+    precio: prec || parseFloat(prod.precio_venta),
+    garantia: false
+});
+
+Así los productos cargados por Excel también tendrán su propio checkbox.
+
+
+---
+
+10. Condicionar los formatos por sucursal
+
+Aquí todavía no vamos a meter toda la lógica de sucursales dentro de renderTable().
+
+Primero debemos establecer una función:
+
+function getFormatoSucursal() {
+    const sucursal = document.getElementById('sucursal_id').value;
+
+    if (sucursal === 'City Mall') {
+        return 'city';
+    }
+
+    if (sucursal === 'Outlet Regalon') {
+        return 'outlet';
+    }
+
+    if (sucursal === 'Dolar Moll 1,2,3') {
+        return 'dolar';
+    }
+
+    return null;
+}
+
+Esto coincide con los nombres que actualmente utiliza tu create.blade.php. 
+
+
+---
+
+11. Los formatos quedan definidos así
+
+City Mall
+
+FORMATO ACTUAL
++
+Garantía por producto
+
+Outlet Mega
+
+Tomando tu indicación:
+
+COD
+Referencia
+Descripción
+Cantidad
+Precio
+Garantía
+País de origen
+Fabricación
+
+Dólar Mall
+
+Código
+Cantidad
+Descripción
+Precio
+Garantía
+
+Y cada producto tendrá su propia garantía.
+
+
+---
+
+12. Todavía NO modificamos productos
+
+Esto es importante.
+
+No vamos a hacer:
+
+productos.garantia
+
+porque eso haría que la garantía fuese una característica permanente del producto.
+
+Nuestra relación será:
+
+productos
+     │
+     │ producto_id
+     ▼
+detalle_ventas
+     │
+     ├── cantidad
+     ├── precio_unitario
+     ├── garantia  ← AQUÍ
+     └── subtotal
+
+Esto es exactamente lo que necesitamos para que un mismo producto pueda tener garantía en una cotización y no tenerla en otra.
+
+
+---
+
+Orden definitivo de implementación
+
+Yo haría los cambios exactamente en este orden:
+
+01. Migración detalle_ventas
+        ↓
+02. Modelo DetalleVenta
+        ↓
+03. quoteItems
+        ↓
+04. Checkbox individual
+        ↓
+05. updateGarantia()
+        ↓
+06. Hidden input
+        ↓
+07. CreateQuoteAction
+        ↓
+08. Validación CotizacionController
+        ↓
+09. Importación Excel
+        ↓
+10. Formato City Mall
+        ↓
+11. Formato Outlet Mega
+        ↓
+12. Formato Dólar Mall
+        ↓
+13. show.blade.php
+        ↓
+14. print.blade.php
+        ↓
+15. Pruebas
+
+No recomiendo hacer los 15 pasos de golpe. Primero implementemos 01–09, comprobamos que la garantía se guarda correctamente por producto, y después hacemos la segunda fase de los formatos de cada sucursal. Tu código actual ya separa claramente la captura (create.blade.php), el guardado (CreateQuoteAction) y la presentación (show.blade.php/print.blade.php), así que respetaremos esa separación. 
+
+Si quieres proceder literalmente archivo por archivo, el primer cambio que debes hacer ahora es la migración add_garantia_to_detalle_ventas_table; después seguimos con DetalleVenta.php y create.blade.php.
