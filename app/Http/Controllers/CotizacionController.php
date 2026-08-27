@@ -76,11 +76,7 @@ class CotizacionController extends Controller
         }
     }
 
-    // ─── BÚSQUEDA MODAL (un solo request por acción manual) ──────────────────
 
-    /**
-     * Busca clientes por código o nombre (llamado desde modal).
-     */
     public function buscarCliente(Request $request)
     {
         $q = trim($request->input('q', ''));
@@ -103,29 +99,28 @@ class CotizacionController extends Controller
         return response()->json($clientes);
     }
 
-    /**
-     * Busca productos por código o nombre (llamado desde modal).
-     */
-    public function buscarProducto(Request $request)
-    {
-        $q = trim($request->input('q', ''));
 
-        if (strlen($q) < 1) {
-            return response()->json([]);
-        }
+public function buscarProducto(Request $request)
+{
+    $q = trim($request->input('q', ''));
 
-        $productos = Producto::where('activo', 1)
-            ->where(function ($query) use ($q) {
-                $query->where('codigo', 'LIKE', "%{$q}%")
-                      ->orWhere('nombre', 'LIKE', "%{$q}%");
-            })
-            ->select('id', 'codigo', 'nombre', 'precio_venta', 'descripcion')
-            ->orderBy('nombre')
-            ->limit(50)
-            ->get();
-
-        return response()->json($productos);
+    if (strlen($q) < 1) {
+        return response()->json([]);
     }
+
+    $productos = Producto::where('activo', 1)
+        ->where(function ($query) use ($q) {
+            $query->where('codigo', 'LIKE', "%{$q}%")
+                  ->orWhere('codigo_barras', 'LIKE', "%{$q}%") 
+                  ->orWhere('nombre', 'LIKE', "%{$q}%");
+        })
+        ->select('id', 'codigo', 'codigo_barras', 'nombre', 'precio_venta', 'descripcion') 
+        ->orderBy('nombre')
+        ->limit(50)
+        ->get();
+
+    return response()->json($productos);
+}
 
     /**
      * Busca proveedores por código o nombre (llamado desde modal).
