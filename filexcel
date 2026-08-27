@@ -1,0 +1,91 @@
+Paso 1: Instalar paquetebashcomposer require maatwebsite/excel
+php artisan vendor:publish --provider="Maatwebsite\Excel\ExcelServiceProvider"Paso 2: Crear Importbashphp artisan make:import ProductosImport --model=ProductoPaso 3: app/Imports/ProductosImport.php
+Aquí mapeamos las columnas y validamos que codigo_barras sea solo númerosphp<?php
+
+namespace App\Imports;
+
+use App\Models\Producto;
+use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithHeadingRow; // Para usar la fila 1 como nombres
+use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Maatwebsite\Excel\Validators\Failure;
+
+class ProductosImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+{
+    public function model(array $row)
+    {
+        return new Producto([
+            'codigo' => $row['codigo'], // ej: PROD-001
+            'nombre' => $row['nombre'],
+            'descripcion' => $row['descripcion']?? null,
+            'codigo_barras' => $this->soloNumeros($row['codigo_barras']?? null), // <- Limpia los 00
+            'precio_venta' => $row['precio_venta'],
+            'costo' => $row['costo']?? 0,
+            'stock' => $row['stock']?? 0,
+            'categoria_id' => $row['categoria_id']?? null,
+        ]);
+    }
+
+    // Limpiar para que solo queden números y conservar los 0 de la izquierda
+    private function soloNumeros($valor){
+        return $valor? preg_replace('/\D/', '', $valor) : null;
+    }
+
+    // Reglas de validación por fila
+    public function rules(): array
+    {
+        return [
+            'codigo' => 'required|unique:productos,codigo',
+            'nombre' => 'required|string|max:255',
+            'codigo_barras' => 'nullable|digits_between:8,14|unique:productos,codigo_barras',
+            'precio_venta' => 'required|numeric|min:0',
+            'stock' => 'nullable|integer|min:0',
+        ];
+    }
+
+    public function customValidationMessages()
+    {
+        return [
+            'codigo.unique' => 'El código :attribute ya existe',
+            'codigo_barras.digits_between' => 'El código de barras debe tener solo números de 8 a 14 dígitos',
+        ];
+    }
+
+    public function onFailure(Failure...$failures) {
+        // Aquí puedes loguear los errores si quieres
+    }
+}Paso 4: Ruta + Controller
+Ruta routes/web.phpphpuse App\Http\Controllers\ProductoController;
+
+Route::post('/productos/importar', [ProductoController::class, 'importar'])->name('productos.importar');Método en ProductoController.phpphpuse App\Imports\ProductosImport;
+use Maatwebsite\Excel\Facades\Excel;
+
+public function importar(Request $request)
+{
+    $request->validate([
+        'archivo' => 'required|mimes:xlsx,xls,csv'
+    ]);
+
+    try {
+        Excel::import(new ProductosImport, $request->file('archivo'));
+        return back()->with('success', 'Productos importados correctamente');
+    } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+        $failures = $e->failures();
+        return back()->withErrors(['error' => 'Hay errores en el Excel. Revisa la fila: '. $failures[0]->row()]);
+    }
+}Paso 5: Formulario para subir el Excel
+En tu vista productos/index.blade.phpblade<form action="{{ route('productos.importar') }}" method="POST" enctype="multipart/form-data">
+    @csrf
+    <div class="input-group">
+        <input type="file" name="archivo" class="form-control" accept=".xlsx,.xls,.csv" required>
+        <button class="btn btn-success" type="submit">
+            <i class="bi bi-file-earmark-excel"></i> Importar
+        </button>
+    </div>
+</form>
+
+{{-- Botón para descargar plantilla --}}
+<a href="{{ asset('plantillas/plantilla_productos.xlsx') }}" class="btn btn-outline-primary btn-sm mt-2">
+    Descargar Plantilla
+</a>
