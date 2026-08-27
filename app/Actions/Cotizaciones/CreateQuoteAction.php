@@ -35,7 +35,7 @@ class CreateQuoteAction
 
             // Número de cotización consecutivo 
             $count = Venta::where('estado', 'cotizacion')->count() + 1;
-            $numero = 'COT-' . ('40722') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+            $numero = 'COT-' . ('40722') . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
 
             $cotizacion = Venta::create([
                 'numero_factura'    => $numero,
